@@ -8,8 +8,5 @@ srcDir        = "src"
 installExt    = @["nim"]
 bin           = @["asyncc"]
 
-
 # Dependencies
-
-requires "nim >= 2.2.4"
-requires "chronos >= 4.0.4"
+requires "nim >= 1.6.0", "chronos >= 4.0.0"
