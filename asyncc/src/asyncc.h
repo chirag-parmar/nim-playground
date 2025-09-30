@@ -25,15 +25,17 @@ extern "C" {
 void NimMain(void);
 
 typedef struct Response Response;
+typedef struct EngineContext EngineContext;
 
 ETH_RESULT_USE_CHECK
-Response *createResponse();
+EngineContext *createContext();
 
 typedef void (*CallBackProc) (Response *res);
 
-void retrievePageC(Response *res, char *url);
+void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
 void freeResponse(Response *res);
-void dispatchLoop(Response *res, CallBackProc cb);
+void freeContext(EngineContext *ctx);
+void dispatchLoop(EngineContext *ctx);
 void printResponse(Response *res);
 
 #endif
