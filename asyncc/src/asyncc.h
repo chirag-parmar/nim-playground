@@ -24,11 +24,16 @@ extern "C" {
 
 void NimMain(void);
 
-typedef struct Account Account;
+typedef struct Response Response;
 
 ETH_RESULT_USE_CHECK
-Account *retrievePageC(char* url);
+Response *createResponse();
 
-void freeResponse(Account *acc);
+typedef void (*CallBackProc) (Response *res);
+
+void retrievePageC(Response *res, char *url);
+void freeResponse(Response *res);
+void dispatchLoop(Response *res, CallBackProc cb);
+void printResponse(Response *res);
 
 #endif

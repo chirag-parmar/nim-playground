@@ -3,15 +3,19 @@ import
   strutils,
   os,
   chronos,
+  chronos/apps/http/httpclient,
   asyncc  # Your async logic
 
 {.pragma: exported, cdecl, exportc, dynlib, raises: [].}
 {.pragma: exportedConst, exportc, dynlib.}
 
 type
-  Account = object
-    address: string
-    nonce: uint64
+  Response = object 
+    response: string
+    error: string
+    finished: bool
+
+  CallBackProc = proc(res: ptr Response) {.cdecl, gcsafe, raises: [].}
 
 proc toUnmanagedPtr[T](x: ref T): ptr T =
   GC_ref(x)
@@ -24,15 +28,36 @@ proc destroy[T](x: ptr T) =
   x[].reset()
   GC_unref(asRef(x))
 
-# C-callable: downloads a page and returns a heap-allocated C string.
-proc retrievePageC(curl: cstring): ptr Account {.exported.} =
-  # currently this is blocking
-  let res = Account.new()
-  try:
-    res.address = waitFor retrievePage($curl)
-  except CatchableError as e:
-    res.address = e.msg
+proc createResponse(): ptr Response {.exported.} =
+  let res = Response.new()
+  res.finished = false
   res.toUnmanagedPtr()
 
-proc freeResponse(res: ptr Account) {.exported.} =
+proc freeResponse(res: ptr Response) {.exported.} =
   res.destroy()
+
+# C-callable: downloads a page and returns a heap-allocated C string.
+proc retrievePageC(res: ptr Response, curl: cstring) {.exported.} =
+  let fut = retrievePage($curl)
+  fut.addCallback proc (_: pointer) {.gcsafe.} =
+    if fut.cancelled:
+      res.error = "cancelled"
+      res.finished = true
+    elif fut.failed():
+      res.error = "failed"
+      res.finished = true
+    else:
+      try:
+        res.response = fut.read()
+      except CatchableError as e:
+        res.error = e.msg
+      finally:
+        res.finished = true
+
+proc dispatchLoop(res: ptr Response, cb: CallBackProc) {.exported.} =
+  while not res.finished:
+    poll()
+  cb(res)
+
+proc printResponse(res: ptr Response) {.exported.} =
+  echo res.response
