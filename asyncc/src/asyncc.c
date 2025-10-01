@@ -37,12 +37,12 @@ int main() {
   NimMain();
   EngineContext *ctx = createContext(); 
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme1);
-  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme2);
-  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme3);
-  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme4);
+  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/chronos.nimble", callme2);
+  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/config.nims", callme3);
+  retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/nim.cfg", callme4);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme5);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme6);
   printf("Waiting for fetch\n");
-  dispatchLoop(ctx);
+  waitForEngine(ctx);
   freeContext(ctx);
 }

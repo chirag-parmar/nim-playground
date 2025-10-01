@@ -34,8 +34,9 @@ typedef void (*CallBackProc) (Response *res);
 
 void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
 void freeResponse(Response *res);
+void printResponse(Response *res);
 void freeContext(EngineContext *ctx);
 void dispatchLoop(EngineContext *ctx);
-void printResponse(Response *res);
+void waitForEngine(EngineContext *ctx);
 
 #endif

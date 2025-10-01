@@ -1,9 +1,10 @@
 # httpwrapper.nim
 import 
   strutils,
+  algorithm,
   os,
   chronos,
-  chronos/[threadsync],
+  std/locks,
   chronos/apps/http/httpclient,
   asyncc  # Your async logic
 
@@ -20,6 +21,7 @@ type
     cb: CallBackProc
 
   EngineContext = object
+    lock: Lock
     responses: seq[ptr Response]
 
 proc toUnmanagedPtr[T](x: ref T): ptr T =
@@ -34,7 +36,9 @@ proc destroy[T](x: ptr T) =
   GC_unref(asRef(x))
 
 proc createContext(): ptr EngineContext {.exported.} =
-  EngineContext.new().toUnmanagedPtr()
+  let ctx = EngineContext.new()
+  ctx.lock.initLock()
+  ctx.toUnmanagedPtr()
 
 proc createResponse(cb: CallBackProc): ptr Response =
   let res = Response.new()
@@ -51,37 +55,64 @@ proc freeContext(ctx: ptr EngineContext) {.exported.} =
 # C-callable: downloads a page and returns a heap-allocated C string.
 proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.exported.} =
   let res = createResponse(cb)
-  ctx.responses.add(res)
+
+  try:
+    ctx.lock.acquire()
+    ctx.responses.add(res)
+  finally:
+    ctx.lock.release()
+
   let fut = retrievePage($curl)
 
   fut.addCallback proc (_: pointer) {.gcsafe.} =
-    if fut.cancelled:
-      res.response = "cancelled"
-      res.finished = true
-      res.status = -2
-    elif fut.failed():
-      res.response = "failed"
-      res.finished = true
-      res.status = -1
-    else:
-      try:
-        res.response = fut.read()
-        res.status = 0
-      except CatchableError as e:
-        res.response = e.msg
-        res.status = -1
-      finally:
+    try:
+      ctx.lock.acquire()
+      if fut.cancelled:
+        res.response = "cancelled"
         res.finished = true
+        res.status = -2
+      elif fut.failed():
+        res.response = "failed"
+        res.finished = true
+        res.status = -1
+      else:
+        try:
+          res.response = fut.read()
+          res.status = 0
+        except CatchableError as e:
+          res.response = e.msg
+          res.status = -1
+        finally:
+          res.finished = true
+    finally:
+      ctx.lock.release()
 
-proc dispatchLoop(ctx: ptr EngineContext) {.exported.} =
+proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
   while ctx.responses.len > 0:
-    for idx, res in ctx.responses:
-      if res.finished:
-        echo idx, res.status, res.finished
-        res.cb(res)
-        ctx.responses.delete(idx)
+    var delList: seq[int] = @[]
 
-    poll()
+    for idx, res in ctx.responses:
+      let res = ctx.responses[idx]
+      if res.finished:
+        try:
+          ctx.lock.acquire()
+          res.cb(res)
+          delList.add(idx)
+        finally:
+          ctx.lock.release()
+
+    # sequence changes as we delete so delting in descending order
+    for i in delList.sorted(SortOrder.Descending):
+      try:
+        ctx.lock.acquire()
+        ctx.responses.delete(i)
+      finally:
+        ctx.lock.release()
+
+    try:
+      waitFor sleepAsync(10)
+    except CancelledError:
+      continue
 
 proc printResponse(res: ptr Response) {.exported.} =
   echo res.response
