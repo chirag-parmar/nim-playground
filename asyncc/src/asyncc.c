@@ -68,13 +68,13 @@ void doMultipleAsyncTasks(EngineContext *ctx) {
 
 int main() {
   NimMain();
-  EngineContext *ctx = createContext(); 
+  EngineContext *ctx = createAsyncTaskEngineContext(); 
   while(true) {
     if (!wait) {
       wait = true;
       doMultipleAsyncTasks(ctx);
     }
-    waitForEngine(ctx);
+    pollAsyncTaskEngine(ctx);
   }
   freeContext(ctx);
 }

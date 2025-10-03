@@ -14,7 +14,7 @@ import
 type
   CallBackProc = proc(status: int, res: cstring) {.cdecl, gcsafe, raises: [].}
 
-  Task = object 
+  Task = ref object 
     status: int
     response: string
     finished: bool
@@ -22,7 +22,7 @@ type
 
   EngineContext = object
     lock: Lock
-    tasks: seq[ptr Task]
+    tasks: seq[Task]
 
 proc toUnmanagedPtr[T](x: ref T): ptr T =
   GC_ref(x)
@@ -35,16 +35,16 @@ proc destroy[T](x: ptr T) =
   x[].reset()
   GC_unref(asRef(x))
 
-proc createContext(): ptr EngineContext {.exported.} =
+proc createAsyncTaskEngineContext(): ptr EngineContext {.exported.} =
   let ctx = EngineContext.new()
   ctx.lock.initLock()
   ctx.toUnmanagedPtr()
 
-proc createTask(cb: CallBackProc): ptr Task =
-  var task = Task.new()
+proc createTask(cb: CallBackProc): Task =
+  let task = Task()
   task.finished = false
   task.cb = cb
-  task.toUnmanagedPtr()
+  task
 
 proc freeResponse(res: cstring) {.exported.} =
   deallocShared(res)
@@ -130,7 +130,7 @@ proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.export
     finally:
       ctx.lock.release()
 
-proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
+proc pollAsyncTaskEngine(ctx: ptr EngineContext) {.exported.} =
   var delList: seq[int] = @[]
 
   let taskLen = ctx.tasks.len

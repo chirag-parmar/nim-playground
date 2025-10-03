@@ -26,8 +26,7 @@ void NimMain(void);
 
 typedef struct EngineContext EngineContext;
 
-ETH_RESULT_USE_CHECK
-EngineContext *createContext();
+ETH_RESULT_USE_CHECK EngineContext *createAsyncTaskEngineContext();
 
 typedef void (*CallBackProc) (int status, char *res);
 
@@ -35,6 +34,10 @@ void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
 void nonBusySleep(EngineContext *ctx, int secs, CallBackProc cb);
 void freeResponse(char *res);
 void freeContext(EngineContext *ctx);
-void waitForEngine(EngineContext *ctx);
+void pollAsyncTaskEngine(EngineContext *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
