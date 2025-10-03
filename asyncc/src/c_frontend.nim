@@ -96,11 +96,39 @@ proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.ex
       ctx.lock.release()
 
 # C-callable: downloads a page and returns a heap-allocated C string.
-proc nonBusySleep(secs: cint) {.exported.} =
+proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.exported.} =
+  let res = createResponse(cb)
+
   try:
-    waitFor sleepAsync(secs)
-  except:
-    echo "no sleep"
+    ctx.lock.acquire()
+    ctx.responses.add(res)
+  finally:
+    ctx.lock.release()
+
+  let fut = sleepAsync(2.seconds)
+
+  fut.addCallback proc (_: pointer) {.gcsafe.} =
+    try:
+      ctx.lock.acquire()
+      if fut.cancelled:
+        res.response = "cancelled"
+        res.finished = true
+        res.status = -2
+      elif fut.failed():
+        res.response = "failed"
+        res.finished = true
+        res.status = -1
+      else:
+        try:
+          res.response = "slept"
+          res.status = 0
+        except CatchableError as e:
+          res.response = e.msg
+          res.status = -1
+        finally:
+          res.finished = true
+    finally:
+      ctx.lock.release()
 
 proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
   var delList: seq[int] = @[]
@@ -123,4 +151,5 @@ proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
     finally:
       ctx.lock.release()
 
-  poll()
+  if ctx.responses.len > 0:
+    poll()

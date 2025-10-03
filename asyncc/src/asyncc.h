@@ -33,7 +33,7 @@ EngineContext *createContext();
 typedef void (*CallBackProc) (int status, char *res);
 
 void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
-void nonBusySleep(int secs);
+void nonBusySleep(EngineContext *ctx, int secs, CallBackProc cb);
 void freeResponse(char *res);
 void freeContext(EngineContext *ctx);
 void dispatchLoop(EngineContext *ctx);

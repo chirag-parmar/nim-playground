@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+static bool wait = false;
 
 void callme1(int status, char *res) {
   printf("Request 1 finished successfully\n");
@@ -45,6 +46,16 @@ void callme6(int status, char *res) {
   freeResponse(res);
 }
 
+void waitIsOver(int status, char *res) {
+  printf("waiting finished successfully\n");
+  printf("status: %d\n", status);
+  
+  wait = false;
+
+  // printf("response: %s\n", res);
+  freeResponse(res);
+}
+
 void doMultipleAsyncTasks(EngineContext *ctx) {
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme1);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/chronos.nimble", callme2);
@@ -52,14 +63,17 @@ void doMultipleAsyncTasks(EngineContext *ctx) {
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/nim.cfg", callme4);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme5);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme6);
-  nonBusySleep(2);
+  nonBusySleep(ctx, 2, waitIsOver);
 }
 
 int main() {
   NimMain();
   EngineContext *ctx = createContext(); 
   while(true) {
-    doMultipleAsyncTasks(ctx);
+    if (!wait) {
+      wait = true;
+      doMultipleAsyncTasks(ctx);
+    }
     waitForEngine(ctx);
   }
   freeContext(ctx);
