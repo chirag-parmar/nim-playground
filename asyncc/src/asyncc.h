@@ -24,17 +24,17 @@ extern "C" {
 
 void NimMain(void);
 
-typedef struct EngineContext EngineContext;
+typedef struct Context Context;
 
-ETH_RESULT_USE_CHECK EngineContext *createAsyncTaskEngineContext();
+ETH_RESULT_USE_CHECK Context *createAsyncTaskContext();
 
 typedef void (*CallBackProc) (int status, char *res);
 
-void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
-void nonBusySleep(EngineContext *ctx, int secs, CallBackProc cb);
+void retrievePageC(Context *ctx, char *url, CallBackProc cb);
+void nonBusySleep(Context *ctx, int secs, CallBackProc cb);
 void freeResponse(char *res);
-void freeContext(EngineContext *ctx);
-void pollAsyncTaskEngine(EngineContext *ctx);
+void freeContext(Context *ctx);
+void pollAsyncTaskEngine(Context *ctx);
 
 #ifdef __cplusplus
 }

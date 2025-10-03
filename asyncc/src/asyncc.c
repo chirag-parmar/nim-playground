@@ -56,7 +56,7 @@ void waitIsOver(int status, char *res) {
   freeResponse(res);
 }
 
-void doMultipleAsyncTasks(EngineContext *ctx) {
+void doMultipleAsyncTasks(Context *ctx) {
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme1);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/chronos.nimble", callme2);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/config.nims", callme3);
@@ -68,7 +68,7 @@ void doMultipleAsyncTasks(EngineContext *ctx) {
 
 int main() {
   NimMain();
-  EngineContext *ctx = createAsyncTaskEngineContext(); 
+  Context *ctx = createAsyncTaskContext(); 
   while(true) {
     if (!wait) {
       wait = true;

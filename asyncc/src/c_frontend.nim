@@ -1,8 +1,6 @@
 # httpwrapper.nim
 import 
-  strutils,
   algorithm,
-  os,
   chronos,
   std/locks,
   chronos/apps/http/httpclient,
@@ -20,7 +18,7 @@ type
     finished: bool
     cb: CallBackProc
 
-  EngineContext = object
+  Context = object
     lock: Lock
     tasks: seq[Task]
 
@@ -35,8 +33,8 @@ proc destroy[T](x: ptr T) =
   x[].reset()
   GC_unref(asRef(x))
 
-proc createAsyncTaskEngineContext(): ptr EngineContext {.exported.} =
-  let ctx = EngineContext.new()
+proc createAsyncTaskContext(): ptr Context {.exported.} =
+  let ctx = Context.new()
   ctx.lock.initLock()
   ctx.toUnmanagedPtr()
 
@@ -49,7 +47,7 @@ proc createTask(cb: CallBackProc): Task =
 proc freeResponse(res: cstring) {.exported.} =
   deallocShared(res)
 
-proc freeContext(ctx: ptr EngineContext) {.exported.} =
+proc freeContext(ctx: ptr Context) {.exported.} =
   ctx.destroy()
 
 proc alloc(str: string): cstring =
@@ -61,7 +59,7 @@ proc alloc(str: string): cstring =
   return ret
 
 # C-callable: downloads a page and returns a heap-allocated C string.
-proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.exported.} =
+proc retrievePageC(ctx: ptr Context, curl: cstring, cb: CallBackProc) {.exported.} =
   let task = createTask(cb)
 
   try:
@@ -96,7 +94,7 @@ proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.ex
       ctx.lock.release()
 
 # C-callable: downloads a page and returns a heap-allocated C string.
-proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.exported.} =
+proc nonBusySleep(ctx: ptr Context, secs: cint, cb: CallBackProc) {.exported.} =
   let task = createTask(cb)
 
   try:
@@ -130,7 +128,7 @@ proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.export
     finally:
       ctx.lock.release()
 
-proc pollAsyncTaskEngine(ctx: ptr EngineContext) {.exported.} =
+proc pollAsyncTaskEngine(ctx: ptr Context) {.exported.} =
   var delList: seq[int] = @[]
 
   let taskLen = ctx.tasks.len
