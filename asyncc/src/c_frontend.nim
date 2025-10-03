@@ -12,7 +12,7 @@ import
 {.pragma: exportedConst, exportc, dynlib.}
 
 type
-  CallBackProc = proc(res: ptr Response) {.cdecl, gcsafe, raises: [].}
+  CallBackProc = proc(status: int, res: cstring) {.cdecl, gcsafe, raises: [].}
 
   Response = object 
     status: int
@@ -41,16 +41,24 @@ proc createContext(): ptr EngineContext {.exported.} =
   ctx.toUnmanagedPtr()
 
 proc createResponse(cb: CallBackProc): ptr Response =
-  let res = Response.new()
+  var res = Response.new()
   res.finished = false
   res.cb = cb
   res.toUnmanagedPtr()
 
-proc freeResponse(res: ptr Response) {.exported.} =
-  res.destroy()
+proc freeResponse(res: cstring) {.exported.} =
+  deallocShared(res)
 
 proc freeContext(ctx: ptr EngineContext) {.exported.} =
   ctx.destroy()
+
+proc alloc(str: string): cstring =
+  var ret = cast[cstring](allocShared(str.len + 1))
+  let s = cast[seq[char]](str)
+  for i in 0 ..< str.len:
+    ret[i] = s[i]
+  ret[str.len] = '\0'
+  return ret
 
 # C-callable: downloads a page and returns a heap-allocated C string.
 proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.exported.} =
@@ -87,32 +95,32 @@ proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.ex
     finally:
       ctx.lock.release()
 
+# C-callable: downloads a page and returns a heap-allocated C string.
+proc nonBusySleep(secs: cint) {.exported.} =
+  try:
+    waitFor sleepAsync(secs)
+  except:
+    echo "no sleep"
+
 proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
-  while ctx.responses.len > 0:
-    var delList: seq[int] = @[]
-
-    for idx, res in ctx.responses:
-      let res = ctx.responses[idx]
-      if res.finished:
-        try:
-          ctx.lock.acquire()
-          res.cb(res)
-          delList.add(idx)
-        finally:
-          ctx.lock.release()
-
-    # sequence changes as we delete so delting in descending order
-    for i in delList.sorted(SortOrder.Descending):
+  var delList: seq[int] = @[]
+  let resLen = ctx.responses.len
+  for idx in 0..<resLen:
+    let res = ctx.responses[idx]
+    if res.finished:
       try:
         ctx.lock.acquire()
-        ctx.responses.delete(i)
+        res.cb(res.status, alloc(res.response))
+        delList.add(idx)
       finally:
         ctx.lock.release()
 
+  # sequence changes as we delete so delting in descending order
+  for i in delList.sorted(SortOrder.Descending):
     try:
-      waitFor sleepAsync(10)
-    except CancelledError:
-      continue
+      ctx.lock.acquire()
+      ctx.responses.delete(i)
+    finally:
+      ctx.lock.release()
 
-proc printResponse(res: ptr Response) {.exported.} =
-  echo res.response
+  poll()

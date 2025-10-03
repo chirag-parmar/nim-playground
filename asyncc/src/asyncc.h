@@ -30,11 +30,11 @@ typedef struct EngineContext EngineContext;
 ETH_RESULT_USE_CHECK
 EngineContext *createContext();
 
-typedef void (*CallBackProc) (Response *res);
+typedef void (*CallBackProc) (int status, char *res);
 
 void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
-void freeResponse(Response *res);
-void printResponse(Response *res);
+void nonBusySleep(int secs);
+void freeResponse(char *res);
 void freeContext(EngineContext *ctx);
 void dispatchLoop(EngineContext *ctx);
 void waitForEngine(EngineContext *ctx);
