@@ -14,7 +14,7 @@ import
 type
   CallBackProc = proc(status: int, res: cstring) {.cdecl, gcsafe, raises: [].}
 
-  Response = object 
+  Task = object 
     status: int
     response: string
     finished: bool
@@ -22,7 +22,7 @@ type
 
   EngineContext = object
     lock: Lock
-    responses: seq[ptr Response]
+    tasks: seq[ptr Task]
 
 proc toUnmanagedPtr[T](x: ref T): ptr T =
   GC_ref(x)
@@ -40,11 +40,11 @@ proc createContext(): ptr EngineContext {.exported.} =
   ctx.lock.initLock()
   ctx.toUnmanagedPtr()
 
-proc createResponse(cb: CallBackProc): ptr Response =
-  var res = Response.new()
-  res.finished = false
-  res.cb = cb
-  res.toUnmanagedPtr()
+proc createTask(cb: CallBackProc): ptr Task =
+  var task = Task.new()
+  task.finished = false
+  task.cb = cb
+  task.toUnmanagedPtr()
 
 proc freeResponse(res: cstring) {.exported.} =
   deallocShared(res)
@@ -62,11 +62,11 @@ proc alloc(str: string): cstring =
 
 # C-callable: downloads a page and returns a heap-allocated C string.
 proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.exported.} =
-  let res = createResponse(cb)
+  let task = createTask(cb)
 
   try:
     ctx.lock.acquire()
-    ctx.responses.add(res)
+    ctx.tasks.add(task)
   finally:
     ctx.lock.release()
 
@@ -76,32 +76,32 @@ proc retrievePageC(ctx: ptr EngineContext, curl: cstring, cb: CallBackProc) {.ex
     try:
       ctx.lock.acquire()
       if fut.cancelled:
-        res.response = "cancelled"
-        res.finished = true
-        res.status = -2
+        task.response = "cancelled"
+        task.finished = true
+        task.status = -2
       elif fut.failed():
-        res.response = "failed"
-        res.finished = true
-        res.status = -1
+        task.response = "failed"
+        task.finished = true
+        task.status = -1
       else:
         try:
-          res.response = fut.read()
-          res.status = 0
+          task.response = fut.read()
+          task.status = 0
         except CatchableError as e:
-          res.response = e.msg
-          res.status = -1
+          task.response = e.msg
+          task.status = -1
         finally:
-          res.finished = true
+          task.finished = true
     finally:
       ctx.lock.release()
 
 # C-callable: downloads a page and returns a heap-allocated C string.
 proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.exported.} =
-  let res = createResponse(cb)
+  let task = createTask(cb)
 
   try:
     ctx.lock.acquire()
-    ctx.responses.add(res)
+    ctx.tasks.add(task)
   finally:
     ctx.lock.release()
 
@@ -111,34 +111,35 @@ proc nonBusySleep(ctx: ptr EngineContext, secs: cint, cb: CallBackProc) {.export
     try:
       ctx.lock.acquire()
       if fut.cancelled:
-        res.response = "cancelled"
-        res.finished = true
-        res.status = -2
+        task.response = "cancelled"
+        task.finished = true
+        task.status = -2
       elif fut.failed():
-        res.response = "failed"
-        res.finished = true
-        res.status = -1
+        task.response = "failed"
+        task.finished = true
+        task.status = -1
       else:
         try:
-          res.response = "slept"
-          res.status = 0
+          task.response = "slept"
+          task.status = 0
         except CatchableError as e:
-          res.response = e.msg
-          res.status = -1
+          task.response = e.msg
+          task.status = -1
         finally:
-          res.finished = true
+          task.finished = true
     finally:
       ctx.lock.release()
 
 proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
   var delList: seq[int] = @[]
-  let resLen = ctx.responses.len
-  for idx in 0..<resLen:
-    let res = ctx.responses[idx]
-    if res.finished:
+
+  let taskLen = ctx.tasks.len
+  for idx in 0..<taskLen:
+    let task = ctx.tasks[idx]
+    if task.finished:
       try:
         ctx.lock.acquire()
-        res.cb(res.status, alloc(res.response))
+        task.cb(task.status, alloc(task.response))
         delList.add(idx)
       finally:
         ctx.lock.release()
@@ -147,9 +148,9 @@ proc waitForEngine(ctx: ptr EngineContext) {.exported.} =
   for i in delList.sorted(SortOrder.Descending):
     try:
       ctx.lock.acquire()
-      ctx.responses.delete(i)
+      ctx.tasks.delete(i)
     finally:
       ctx.lock.release()
 
-  if ctx.responses.len > 0:
+  if ctx.tasks.len > 0:
     poll()

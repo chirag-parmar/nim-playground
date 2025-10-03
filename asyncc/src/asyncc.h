@@ -24,7 +24,6 @@ extern "C" {
 
 void NimMain(void);
 
-typedef struct Response Response;
 typedef struct EngineContext EngineContext;
 
 ETH_RESULT_USE_CHECK
@@ -36,7 +35,6 @@ void retrievePageC(EngineContext *ctx, char *url, CallBackProc cb);
 void nonBusySleep(EngineContext *ctx, int secs, CallBackProc cb);
 void freeResponse(char *res);
 void freeContext(EngineContext *ctx);
-void dispatchLoop(EngineContext *ctx);
 void waitForEngine(EngineContext *ctx);
 
 #endif
