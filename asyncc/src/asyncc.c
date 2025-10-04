@@ -63,7 +63,7 @@ void doMultipleAsyncTasks(Context *ctx) {
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/nim.cfg", callme4);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme5);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme6);
-  nonBusySleep(ctx, 2, waitIsOver);
+  nonBusySleep(ctx, 4, waitIsOver);
 }
 
 int main() {

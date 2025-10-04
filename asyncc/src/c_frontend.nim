@@ -1,6 +1,7 @@
 # httpwrapper.nim
 import 
   algorithm,
+  macros,
   chronos,
   std/locks,
   chronos/apps/http/httpclient,
@@ -103,7 +104,7 @@ proc nonBusySleep(ctx: ptr Context, secs: cint, cb: CallBackProc) {.exported.} =
   finally:
     ctx.lock.release()
 
-  let fut = sleepAsync(2.seconds)
+  let fut = sleepAsync((secs).seconds)
 
   fut.addCallback proc (_: pointer) {.gcsafe.} =
     try:
