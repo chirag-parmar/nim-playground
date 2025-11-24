@@ -1,4 +1,4 @@
-import chronos/apps/http/httpclient
+import chronos, chronos/apps/http/httpclient
 
 proc retrievePage*(uri: string): Future[string] {.async: (raises: [ValueError, CancelledError, HttpError]).} =
   # Create a new HTTP session
@@ -17,3 +17,8 @@ proc retrievePage*(uri: string): Future[string] {.async: (raises: [ValueError, C
       await noCancel(httpSession.closeWait())
 
   data
+
+proc testVariableLifecycle*(cstr: string, cbool: bool, cunint: uint64) {.async: (raises: [CancelledError]).} =
+  echo "cstring = ", cstr, " cbool = ", cbool, " culonglong = ", cunint
+  await sleepAsync(chronos.seconds(5))
+  echo "cstring = ", cstr, " cbool = ", cbool, " culonglong = ", cunint

@@ -95,6 +95,41 @@ proc retrievePageC(ctx: ptr Context, curl: cstring, cb: CallBackProc) {.exported
       ctx.lock.release()
 
 # C-callable: downloads a page and returns a heap-allocated C string.
+proc testVariableLifecycleC(ctx: ptr Context, cstr: cstring, cbool: bool, cunint: culonglong, cb: CallBackProc) {.exported.} =
+  let task = createTask(cb)
+
+  try:
+    ctx.lock.acquire()
+    ctx.tasks.add(task)
+  finally:
+    ctx.lock.release()
+
+  let fut = testVariableLifecycle($cstr, cbool, cunint)
+
+  fut.addCallback proc (_: pointer) {.gcsafe.} =
+    try:
+      ctx.lock.acquire()
+      if fut.cancelled:
+        task.response = "cancelled"
+        task.finished = true
+        task.status = -2
+      elif fut.failed():
+        task.response = "failed"
+        task.finished = true
+        task.status = -1
+      else:
+        try:
+          task.response = "success"
+          task.status = 0
+        except CatchableError as e:
+          task.response = e.msg
+          task.status = -1
+        finally:
+          task.finished = true
+    finally:
+      ctx.lock.release()
+
+# C-callable: downloads a page and returns a heap-allocated C string.
 proc nonBusySleep(ctx: ptr Context, secs: cint, cb: CallBackProc) {.exported.} =
   let task = createTask(cb)
 

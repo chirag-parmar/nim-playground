@@ -1,8 +1,11 @@
 #include "./asyncc.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>     // malloc, free
+#include <string.h>     // strlen, strcpy
+#include <stdbool.h>    // bool type
 
-static bool wait = false;
+static bool waitFlag = false;
 
 void callme1(int status, char *res) {
   printf("Request 1 finished successfully\n");
@@ -46,14 +49,43 @@ void callme6(int status, char *res) {
   freeResponse(res);
 }
 
-void waitIsOver(int status, char *res) {
-  printf("waiting finished successfully\n");
+void callmevariable(int status, char *res) {
+  printf("Request 6 finished successfully\n");
+  printf("status: %d\n", status);
+  // printf("response: %s\n", res);
+  freeResponse(res);
+}
+
+void waitFlagIsOver(int status, char *res) {
+  printf("waitFlaging finished successfully\n");
   printf("status: %d\n", status);
   
-  wait = false;
+  waitFlag = false;
 
   // printf("response: %s\n", res);
   freeResponse(res);
+}
+
+void testVariableLifecycleC_wrapper(Context *ctx, CallBackProc cb) {
+    char *msg = malloc(strlen("hello world!") + 1);
+    strcpy(msg, "hello world!");
+
+    bool *flag = malloc(sizeof(bool));
+    *flag = true;
+
+    unsigned long long *num = malloc(sizeof(unsigned long long));
+    *num = 32ULL;
+
+    testVariableLifecycleC(ctx, msg, *flag, *num, cb);
+
+    free(msg);
+    free(flag);
+    free(num);
+    msg = NULL;
+    flag = NULL;
+    num = NULL;
+
+    printf("Variables freed!!\n");
 }
 
 void doMultipleAsyncTasks(Context *ctx) {
@@ -63,15 +95,16 @@ void doMultipleAsyncTasks(Context *ctx) {
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/nim.cfg", callme4);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme5);
   retrievePageC(ctx, "https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md", callme6);
-  nonBusySleep(ctx, 4, waitIsOver);
+  testVariableLifecycleC_wrapper(ctx, callmevariable);
+  nonBusySleep(ctx, 7, waitFlagIsOver); // testVariableLifecycle takes 5 seconds so...
 }
 
 int main() {
   NimMain();
   Context *ctx = createAsyncTaskContext(); 
   while(true) {
-    if (!wait) {
-      wait = true;
+    if (!waitFlag) {
+      waitFlag = true;
       doMultipleAsyncTasks(ctx);
     }
     pollAsyncTaskEngine(ctx);
