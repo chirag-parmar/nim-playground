@@ -33,6 +33,8 @@ typedef void (*CallBackProc) (int status, char *res);
 void retrievePageC(Context *ctx, char *url, CallBackProc cb);
 void testVariableLifecycleC(Context *ctx, char *cstr, bool cbool, unsigned long long cunint, CallBackProc cb);
 void nonBusySleep(Context *ctx, int secs, CallBackProc cb);
+void dispatchBigLoop(Context *ctx, CallBackProc cb);
+void dispatchSmallLoop(Context *ctx, CallBackProc cb);
 void freeResponse(char *res);
 void freeContext(Context *ctx);
 void pollAsyncTaskEngine(Context *ctx);

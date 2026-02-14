@@ -22,3 +22,13 @@ proc testVariableLifecycle*(cstr: string, cbool: bool, cunint: uint64) {.async: 
   echo "cstring = ", cstr, " cbool = ", cbool, " culonglong = ", cunint
   await sleepAsync(chronos.seconds(5))
   echo "cstring = ", cstr, " cbool = ", cbool, " culonglong = ", cunint
+
+proc bigLoop*() {.async: (raises: [CancelledError]).} =
+  while true:
+    echo "10s task"
+    await sleepAsync(seconds(10))
+
+proc smallLoop*() {.async: (raises: [CancelledError]).} =
+  while true:
+    echo "1s task"
+    await sleepAsync(seconds(1))

@@ -56,6 +56,16 @@ void callmevariable(int status, char *res) {
   freeResponse(res);
 }
 
+void bigLoopCallback(int status, char *res) {
+  printf("big loop finished -> Status: %d, Result: %s", status, res);
+  freeResponse(res);
+}
+
+void smallLoopCallback(int status, char *res) {
+  printf("small loop finished -> Status: %d, Result: %s", status, res);
+  freeResponse(res);
+}
+
 void waitFlagIsOver(int status, char *res) {
   printf("waitFlaging finished successfully\n");
   printf("status: %d\n", status);
@@ -102,12 +112,23 @@ void doMultipleAsyncTasks(Context *ctx) {
 int main() {
   NimMain();
   Context *ctx = createAsyncTaskContext(); 
+
+//  while(true) {
+//    if (!waitFlag) {
+//      waitFlag = true;
+//      doMultipleAsyncTasks(ctx);
+//    }
+//    pollAsyncTaskEngine(ctx);
+//  }
+//  freeContext(ctx);
+
   while(true) {
-    if (!waitFlag) {
-      waitFlag = true;
-      doMultipleAsyncTasks(ctx);
-    }
+    dispatchBigLoop(ctx, bigLoopCallback);
+    printf("Polling start \n");
     pollAsyncTaskEngine(ctx);
+    printf("Polling Finished \n");
+    dispatchSmallLoop(ctx, smallLoopCallback);
   }
   freeContext(ctx);
+
 }
