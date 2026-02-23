@@ -1,2 +1,5 @@
 asyncc_from_c
 *.a
+nimcache_wasm
+asyncc_wasm.wasm
+asyncc_wasm.js

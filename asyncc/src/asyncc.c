@@ -113,22 +113,22 @@ int main() {
   NimMain();
   Context *ctx = createAsyncTaskContext(); 
 
-//  while(true) {
-//    if (!waitFlag) {
-//      waitFlag = true;
-//      doMultipleAsyncTasks(ctx);
-//    }
-//    pollAsyncTaskEngine(ctx);
-//  }
-//  freeContext(ctx);
-
   while(true) {
-    dispatchBigLoop(ctx, bigLoopCallback);
-    printf("Polling start \n");
+    if (!waitFlag) {
+      waitFlag = true;
+      doMultipleAsyncTasks(ctx);
+    }
     pollAsyncTaskEngine(ctx);
-    printf("Polling Finished \n");
-    dispatchSmallLoop(ctx, smallLoopCallback);
   }
   freeContext(ctx);
+
+//  while(true) {
+//    dispatchBigLoop(ctx, bigLoopCallback);
+//    printf("Polling start \n");
+//    pollAsyncTaskEngine(ctx);
+//    printf("Polling Finished \n");
+//    dispatchSmallLoop(ctx, smallLoopCallback);
+//  }
+//  freeContext(ctx);
 
 }

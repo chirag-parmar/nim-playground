@@ -78,10 +78,6 @@ proc retrievePageC(ctx: ptr Context, curl: cstring, cb: CallBackProc) {.exported
         task.response = "cancelled"
         task.finished = true
         task.status = -2
-      elif fut.failed():
-        task.response = "failed"
-        task.finished = true
-        task.status = -1
       else:
         try:
           task.response = fut.read()
@@ -113,12 +109,9 @@ proc dispatchBigLoop(ctx: ptr Context, cb: CallBackProc) {.exported.} =
         task.response = "cancelled"
         task.finished = true
         task.status = -2
-      elif fut.failed():
-        task.response = "failed"
-        task.finished = true
-        task.status = -1
       else:
         try:
+          fut.read()
           task.response = "completed"
           task.status = 0
         except CatchableError as e:
@@ -149,12 +142,9 @@ proc dispatchSmallLoop(ctx: ptr Context, cb: CallBackProc) {.exported.} =
         task.response = "cancelled"
         task.finished = true
         task.status = -2
-      elif fut.failed():
-        task.response = "failed"
-        task.finished = true
-        task.status = -1
       else:
         try:
+          fut.read()
           task.response = "completed"
           task.status = 0
         except CatchableError as e:
@@ -185,12 +175,9 @@ proc testVariableLifecycleC(ctx: ptr Context, cstr: cstring, cbool: bool, cunint
         task.response = "cancelled"
         task.finished = true
         task.status = -2
-      elif fut.failed():
-        task.response = "failed"
-        task.finished = true
-        task.status = -1
       else:
         try:
+          fut.read()
           task.response = "success"
           task.status = 0
         except CatchableError as e:
@@ -220,12 +207,9 @@ proc nonBusySleep(ctx: ptr Context, secs: cint, cb: CallBackProc) {.exported.} =
         task.response = "cancelled"
         task.finished = true
         task.status = -2
-      elif fut.failed():
-        task.response = "failed"
-        task.finished = true
-        task.status = -1
       else:
         try:
+          fut.read()
           task.response = "slept"
           task.status = 0
         except CatchableError as e:

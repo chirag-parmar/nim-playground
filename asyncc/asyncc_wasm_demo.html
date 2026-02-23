@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>asyncc wasm demo</title>
+  <style>
+    body { font-family: monospace; max-width: 640px; margin: 2rem auto; }
+    button { margin: 0.25rem; padding: 0.5rem 1rem; cursor: pointer; }
+    #log { background: #111; color: #0f0; padding: 1rem; height: 320px;
+           overflow-y: auto; white-space: pre-wrap; font-size: 0.82rem;
+           margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>asyncc wasm demo</h2>
+  <button id="btn-fetch">Fetch README</button>
+  <button id="btn-sleep">Sleep 2s</button>
+  <button id="btn-multi">Fetch × 3 (concurrent)</button>
+  <button id="btn-shutdown">Shutdown</button>
+  <pre id="log">[waiting for module…]</pre>
+
+  <script type="module">
+    // ── import; the module boots itself via top-level await ──────────────────
+    import { fetch, sleep, shutdown } from './asyncc.js';
+
+    const log = document.getElementById('log');
+    function print(msg) {
+      log.textContent += '\n' + msg;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    log.textContent = '[module ready]';
+
+    const README = 'https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md';
+
+    document.getElementById('btn-fetch').addEventListener('click', async () => {
+      print('→ fetch ' + README);
+      try {
+        const body = await fetch(README);
+        print('✓ fetch done (' + body.length + ' bytes): ' + body.slice(0, 120) + '…');
+      } catch (e) {
+        print('✗ fetch failed (status ' + e.status + '): ' + e.message);
+      }
+    });
+
+    document.getElementById('btn-sleep').addEventListener('click', async () => {
+      print('→ sleep 2s');
+      try {
+        const result = await sleep(2);
+        print('✓ sleep done: ' + result);
+      } catch (e) {
+        print('✗ sleep failed (status ' + e.status + '): ' + e.message);
+      }
+    });
+
+    document.getElementById('btn-multi').addEventListener('click', async () => {
+      const urls = [
+        'https://raw.githubusercontent.com/status-im/nim-chronos/master/README.md',
+        'https://raw.githubusercontent.com/status-im/nim-chronos/master/chronos.nimble',
+        'https://raw.githubusercontent.com/status-im/nim-chronos/master/config.nims',
+      ];
+      print('→ dispatching ' + urls.length + ' fetches concurrently…');
+      const results = await Promise.allSettled(urls.map(u => fetch(u)));
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled')
+          print('✓ [' + i + '] ' + r.value.length + ' bytes');
+        else
+          print('✗ [' + i + '] ' + r.reason.message);
+      });
+    });
+
+    document.getElementById('btn-shutdown').addEventListener('click', () => {
+      shutdown();
+      print('· shutdown');
+    });
+  </script>
+</body>
+</html>
